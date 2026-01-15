@@ -1,0 +1,53 @@
+---
+/**
+ * Example: Main page using centralized i18n setup
+ * 
+ * ✅ No need to pass config every time
+ * ✅ Language is extracted automatically from URL
+ * ✅ One import, everything works
+ */
+
+import { getLangFromUrl, getTranslator, getAlternateLinks } from './i18n-setup';
+
+// Extract language from URL automatically
+const lang = getLangFromUrl(Astro.url);
+
+// Get translator - it's already configured!
+const { t, tn, td, tc } = getTranslator(lang);
+
+// Get SEO links
+const alternates = getAlternateLinks(Astro.url);
+
+// Example data
+const price = 1234.56;
+const date = new Date();
+---
+
+<!DOCTYPE html>
+<html lang={lang}>
+<head>
+  <meta charset="UTF-8">
+  <title>{t('hero.title')}</title>
+  
+  <!-- SEO: Alternate language links -->
+  {alternates.map(({ lang, url }) => (
+    <link rel="alternate" hreflang={lang} href={url} />
+  ))}
+</head>
+<body>
+  <h1>{t('hero.title')}</h1>
+  <p>{t('hero.subtitle')}</p>
+  
+  <nav>
+    <a href={`/${lang}/`}>{t('nav.home')}</a>
+    <a href={`/${lang}/about`}>{t('nav.about')}</a>
+    <a href={`/${lang}/contact`}>{t('nav.contact')}</a>
+  </nav>
+  
+  <section>
+    <p>Price: {tc(price, 'USD')}</p>
+    <p>Date: {td(date)}</p>
+    <p>Number: {tn(10532)}</p>
+  </section>
+</body>
+</html>

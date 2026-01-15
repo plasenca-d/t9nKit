@@ -1,0 +1,123 @@
+---
+/**
+ * Example Page - Super Clean!
+ * 
+ * ✅ No need to extract language
+ * ✅ No need to configure translator
+ * ✅ Just import what you need and go!
+ */
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getLangFromUrl, getTranslator } from '../i18n-setup';
+
+const lang = getLangFromUrl(Astro.url);
+const { t, tc, td, tn } = getTranslator(lang);
+
+// Your page data
+const products = [
+  { id: 1, price: 99.99 },
+  { id: 2, price: 149.99 },
+  { id: 3, price: 199.99 },
+];
+
+const stats = {
+  users: 10532,
+  sales: 45678.90,
+  lastUpdate: new Date(),
+};
+---
+
+<BaseLayout title={t('hero.title')}>
+  <section class="hero">
+    <h1>{t('hero.title')}</h1>
+    <p>{t('hero.subtitle')}</p>
+  </section>
+  
+  <section class="products">
+    <h2>Products</h2>
+    {products.map(product => (
+      <div class="product-card">
+        <p>Product #{product.id}</p>
+        <p class="price">{tc(product.price, 'USD')}</p>
+      </div>
+    ))}
+  </section>
+  
+  <section class="stats">
+    <h2>Statistics</h2>
+    <div class="stat-grid">
+      <div class="stat">
+        <strong>Users:</strong> {tn(stats.users)}
+      </div>
+      <div class="stat">
+        <strong>Sales:</strong> {tc(stats.sales, 'USD')}
+      </div>
+      <div class="stat">
+        <strong>Updated:</strong> {td(stats.lastUpdate, { dateStyle: 'medium' })}
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .hero {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 8px;
+    margin-bottom: 3rem;
+  }
+  
+  .hero h1 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+  }
+  
+  .products {
+    margin-bottom: 3rem;
+  }
+  
+  .products h2 {
+    margin-bottom: 1.5rem;
+  }
+  
+  .product-card {
+    padding: 1.5rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .price {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #667eea;
+  }
+  
+  .stats h2 {
+    margin-bottom: 1.5rem;
+  }
+  
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+  }
+  
+  .stat {
+    padding: 1.5rem;
+    background: #f5f5f5;
+    border-radius: 8px;
+    text-align: center;
+  }
+  
+  .stat strong {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #666;
+  }
+</style>

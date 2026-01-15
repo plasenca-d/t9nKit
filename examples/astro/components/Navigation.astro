@@ -1,0 +1,61 @@
+---
+/**
+ * Example: Reusable Navigation Component
+ * 
+ * ✅ Receives only the language
+ * ✅ Everything else is centralized
+ */
+
+import { getTranslator } from '../i18n-setup';
+import type { AppLanguage } from '../i18n-setup';
+
+interface Props {
+  lang: AppLanguage;
+  currentPath?: string;
+}
+
+const { lang, currentPath = '/' } = Astro.props;
+const { t } = getTranslator(lang);
+
+const navItems = [
+  { href: `/${lang}/`, label: t('nav.home') },
+  { href: `/${lang}/about`, label: t('nav.about') },
+  { href: `/${lang}/contact`, label: t('nav.contact') },
+];
+---
+
+<nav class="navigation">
+  {navItems.map(({ href, label }) => (
+    <a 
+      href={href} 
+      class:list={['nav-link', { active: currentPath === href }]}
+    >
+      {label}
+    </a>
+  ))}
+</nav>
+
+<style>
+  .navigation {
+    display: flex;
+    gap: 2rem;
+    padding: 1rem;
+    background: #333;
+  }
+  
+  .nav-link {
+    color: white;
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    transition: background 0.2s;
+  }
+  
+  .nav-link:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  
+  .nav-link.active {
+    background: rgba(255, 255, 255, 0.2);
+  }
+</style>

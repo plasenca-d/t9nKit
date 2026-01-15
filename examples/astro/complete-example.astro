@@ -1,0 +1,260 @@
+---
+/**
+ * Complete Astro Example using t9nKit
+ * This shows all the features available for Astro projects
+ */
+
+import { 
+  useTranslations, 
+  getLangFromUrl,
+  generateAlternateLinks,
+  createLanguageSwitcher,
+  hasTranslation 
+} from 't9nkit/astro';
+import type { T9nKitConfig } from 't9nkit';
+
+// Your translation configuration
+const t9nConfig: T9nKitConfig<'es' | 'en'> = {
+  translations: {
+    es: {
+      meta: {
+        title: "Mi Sitio Web",
+        description: "Descripción del sitio"
+      },
+      nav: {
+        home: "Inicio",
+        about: "Acerca de",
+        contact: "Contacto"
+      },
+      hero: {
+        title: "Bienvenido",
+        subtitle: "Sistema de traducción completo",
+        cta: "Comenzar"
+      },
+      product: {
+        price: "Precio: {price}",
+        description: "Descripción del producto"
+      },
+      items: {
+        count: {
+          zero: "Sin artículos",
+          one: "1 artículo",
+          other: "{count} artículos"
+        }
+      }
+    },
+    en: {
+      meta: {
+        title: "My Website",
+        description: "Site description"
+      },
+      nav: {
+        home: "Home",
+        about: "About",
+        contact: "Contact"
+      },
+      hero: {
+        title: "Welcome",
+        subtitle: "Complete translation system",
+        cta: "Get Started"
+      },
+      product: {
+        price: "Price: {price}",
+        description: "Product description"
+      },
+      items: {
+        count: {
+          zero: "No items",
+          one: "1 item",
+          other: "{count} items"
+        }
+      }
+    }
+  },
+  defaultLanguage: 'es',
+  languages: {
+    es: 'Español',
+    en: 'English'
+  }
+};
+
+// Extract language from URL
+const lang = getLangFromUrl(Astro.url, ['es', 'en'], 'es');
+
+// Create translator
+const { t, tn, td, tc, tr } = useTranslations(t9nConfig, lang);
+
+// Generate SEO alternate links
+const alternateLinks = generateAlternateLinks(Astro.url, ['es', 'en'], 'es');
+
+// Create language switcher data
+const languageSwitcher = createLanguageSwitcher(
+  Astro.url, 
+  ['es', 'en'], 
+  'es',
+  t9nConfig.languages
+);
+
+// Check if optional content exists
+const hasProductDescription = hasTranslation('product.description', t9nConfig, lang);
+
+// Example data
+const price = 1234.56;
+const itemCount = 5;
+const lastUpdate = new Date();
+---
+
+<!DOCTYPE html>
+<html lang={lang}>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- SEO Meta Tags -->
+  <title>{t('meta.title')}</title>
+  <meta name="description" content={t('meta.description')} />
+  
+  <!-- Alternate Language Links for SEO -->
+  {alternateLinks.map(({ lang, url }) => (
+    <link rel="alternate" hreflang={lang} href={url} />
+  ))}
+  
+  <!-- Open Graph -->
+  <meta property="og:title" content={t('meta.title')} />
+  <meta property="og:description" content={t('meta.description')} />
+  <meta property="og:locale" content={lang === 'es' ? 'es_ES' : 'en_US'} />
+</head>
+<body>
+  <!-- Language Switcher -->
+  <nav class="language-switcher">
+    <span>
+      {languageSwitcher.current.name}
+    </span>
+    {languageSwitcher.alternatives.map(({ code, name, url }) => (
+      <a href={url} hreflang={code}>
+        {name}
+      </a>
+    ))}
+  </nav>
+
+  <!-- Main Navigation -->
+  <nav>
+    <a href={`/${lang}/`}>{t('nav.home')}</a>
+    <a href={`/${lang}/about`}>{t('nav.about')}</a>
+    <a href={`/${lang}/contact`}>{t('nav.contact')}</a>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <h1>{t('hero.title')}</h1>
+    <p>{t('hero.subtitle')}</p>
+    <button>{t('hero.cta')}</button>
+  </section>
+
+  <!-- Example: Interpolation -->
+  <section>
+    <h2>{t('product.price', { price: tc(price, 'USD') })}</h2>
+    <!-- Output ES: "Precio: 1.234,56 US$" -->
+    <!-- Output EN: "Price: $1,234.56" -->
+  </section>
+
+  <!-- Example: Pluralization -->
+  <section>
+    <p>{t('items.count', { count: itemCount })}</p>
+    <!-- Output ES: "5 artículos" -->
+    <!-- Output EN: "5 items" -->
+  </section>
+
+  <!-- Example: Conditional rendering based on translation existence -->
+  {hasProductDescription && (
+    <p>{t('product.description')}</p>
+  )}
+
+  <!-- Example: Number formatting -->
+  <section>
+    <p>Visits: {tn(10532)}</p>
+    <!-- Output ES: "10.532" -->
+    <!-- Output EN: "10,532" -->
+    
+    <p>Percentage: {tn(0.856, { style: 'percent' })}</p>
+    <!-- Output ES: "85,6 %" -->
+    <!-- Output EN: "85.6%" -->
+  </section>
+
+  <!-- Example: Date formatting -->
+  <section>
+    <p>Last update: {td(lastUpdate)}</p>
+    <!-- Output ES: "11 de enero de 2026" -->
+    <!-- Output EN: "January 11, 2026" -->
+    
+    <p>Short date: {td(lastUpdate, { dateStyle: 'short' })}</p>
+    <!-- Output ES: "11/1/26" -->
+    <!-- Output EN: "1/11/26" -->
+  </section>
+
+  <!-- Example: Currency formatting -->
+  <section>
+    <p>Price in EUR: {tc(price, 'EUR')}</p>
+    <!-- Output ES: "1.234,56 €" -->
+    <!-- Output EN: "€1,234.56" -->
+  </section>
+
+  <!-- Example: Relative time -->
+  <section>
+    <p>Published {tr(-2, 'day')}</p>
+    <!-- Output ES: "hace 2 días" -->
+    <!-- Output EN: "2 days ago" -->
+    
+    <p>Next update {tr(1, 'week')}</p>
+    <!-- Output ES: "en 1 semana" -->
+    <!-- Output EN: "in 1 week" -->
+  </section>
+
+  <!-- Example: Nested translations -->
+  <section>
+    <h2>{t('nav.home')}</h2>
+    <p>{t('nav.about')}</p>
+  </section>
+</body>
+</html>
+
+<style>
+  .language-switcher {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    background: #f5f5f5;
+  }
+  
+  .language-switcher a {
+    color: #0066cc;
+    text-decoration: none;
+  }
+  
+  .language-switcher a:hover {
+    text-decoration: underline;
+  }
+  
+  nav {
+    display: flex;
+    gap: 2rem;
+    padding: 1rem;
+    background: #333;
+  }
+  
+  nav a {
+    color: white;
+    text-decoration: none;
+  }
+  
+  .hero {
+    text-align: center;
+    padding: 4rem 2rem;
+  }
+  
+  section {
+    padding: 2rem;
+    margin: 1rem 0;
+    border: 1px solid #ddd;
+  }
+</style>

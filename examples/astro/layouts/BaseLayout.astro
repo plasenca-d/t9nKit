@@ -1,0 +1,106 @@
+---
+/**
+ * Base Layout - The Smart Way
+ * 
+ * This layout:
+ * ✅ Extracts language automatically from URL
+ * ✅ Makes translator available to all child components via props
+ * ✅ Handles SEO automatically
+ * ✅ No repeated code in every page
+ */
+
+import { 
+  getLangFromUrl, 
+  getTranslator, 
+  getAlternateLinks,
+  type AppLanguage 
+} from '../i18n-setup';
+import Navigation from '../components/Navigation.astro';
+import LanguageSwitcher from '../components/LanguageSwitcher.astro';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+// Extract language from URL
+const lang = getLangFromUrl(Astro.url);
+
+// Get translator
+const { t, tn, td, tc, tr } = getTranslator(lang);
+
+// Props with defaults
+const { 
+  title = t('hero.title'), 
+  description = t('hero.subtitle') 
+} = Astro.props;
+
+// SEO
+const alternates = getAlternateLinks(Astro.url);
+---
+
+<!DOCTYPE html>
+<html lang={lang}>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- Meta Tags -->
+  <title>{title}</title>
+  <meta name="description" content={description} />
+  
+  <!-- SEO: Language alternates -->
+  {alternates.map(({ lang, url }) => (
+    <link rel="alternate" hreflang={lang} href={url} />
+  ))}
+  
+  <!-- Open Graph -->
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:locale" content={lang === 'es' ? 'es_ES' : 'en_US'} />
+</head>
+<body>
+  <header>
+    <LanguageSwitcher />
+    <Navigation lang={lang} currentPath={Astro.url.pathname} />
+  </header>
+  
+  <main>
+    <!-- 
+      Child pages can now use t, tn, td, tc, tr directly
+      because we're passing them down or they can import getTranslator
+    -->
+    <slot />
+  </main>
+  
+  <footer>
+    <p>&copy; 2026 - {t('common.loading')}</p>
+  </footer>
+</body>
+</html>
+
+<style is:global>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+  }
+  
+  main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+  
+  footer {
+    text-align: center;
+    padding: 2rem;
+    background: #f5f5f5;
+    margin-top: 4rem;
+  }
+</style>

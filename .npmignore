@@ -1,0 +1,14 @@
+src/
+*.test.ts
+*.test.tsx
+
+examples/
+.github/
+
+tsconfig.json
+bun.lock
+.gitignore
+
+node_modules/
+.DS_Store
+*.log

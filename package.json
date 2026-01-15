@@ -1,0 +1,125 @@
+{
+  "name": "t9nkit",
+  "version": "0.1.0",
+  "description": "Complete i18n translation system with zero dependencies - Works on server and client",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./core": {
+      "import": {
+        "types": "./dist/core/index.d.ts",
+        "default": "./dist/core/index.js"
+      },
+      "require": {
+        "types": "./dist/core/index.d.ts",
+        "default": "./dist/core/index.cjs"
+      }
+    },
+    "./astro": {
+      "import": {
+        "types": "./dist/astro.d.ts",
+        "default": "./dist/astro.js"
+      },
+      "require": {
+        "types": "./dist/astro.d.ts",
+        "default": "./dist/astro.cjs"
+      }
+    },
+    "./react": {
+      "import": {
+        "types": "./dist/react.d.ts",
+        "default": "./dist/react.js"
+      },
+      "require": {
+        "types": "./dist/react.d.ts",
+        "default": "./dist/react.cjs"
+      }
+    },
+    "./nextjs": {
+      "import": {
+        "types": "./dist/nextjs.d.ts",
+        "default": "./dist/nextjs.js"
+      },
+      "require": {
+        "types": "./dist/nextjs.d.ts",
+        "default": "./dist/nextjs.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "bun run build:esm && bun run build:cjs && bun run build:types",
+    "build:esm": "bun build src/index.ts --outdir=dist --format=esm --target=node --minify && bun build src/astro.ts --outdir=dist --format=esm --target=node --minify && bun build src/react.tsx --outdir=dist --format=esm --target=node --minify --external react && bun build src/nextjs.tsx --outdir=dist --format=esm --target=node --minify --external react --external next && bun build src/core/index.ts --outdir=dist/core --format=esm --target=node --minify",
+    "build:cjs": "bun build src/index.ts --outfile=dist/index.cjs --format=cjs --target=node --minify && bun build src/astro.ts --outfile=dist/astro.cjs --format=cjs --target=node --minify && bun build src/react.tsx --outfile=dist/react.cjs --format=cjs --target=node --minify --external react && bun build src/nextjs.tsx --outfile=dist/nextjs.cjs --format=cjs --target=node --minify --external react --external next && bun build src/core/index.ts --outfile=dist/core/index.cjs --format=cjs --target=node --minify",
+    "build:types": "tsc --declaration --emitDeclarationOnly --outDir dist",
+    "dev": "bun run build --watch",
+    "test": "bun test",
+    "prepublishOnly": "bun run build",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "i18n",
+    "internationalization",
+    "translation",
+    "localization",
+    "l10n",
+    "translations",
+    "astro",
+    "react",
+    "vue",
+    "bun",
+    "typescript",
+    "zero-dependencies",
+    "pluralization",
+    "formatting"
+  ],
+  "author": "plasenca-d",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/plasenca-d/t9nKit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/plasenca-d/t9nKit/issues"
+  },
+  "homepage": "https://github.com/plasenca-d/t9nKit#readme",
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/react": "^19.2.8",
+    "@types/react-dom": "^19.2.3",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "typescript": "^5.7.0"
+  },
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "next": ">=12.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "next": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

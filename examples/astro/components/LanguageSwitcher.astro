@@ -1,0 +1,60 @@
+---
+/**
+ * Example: Language Switcher Component
+ * 
+ * ✅ Works automatically based on current URL
+ * ✅ No manual configuration needed
+ */
+
+import { getLanguageSwitcher } from '../i18n-setup';
+
+const switcher = getLanguageSwitcher(Astro.url);
+---
+
+<div class="language-switcher">
+  <span class="current-lang">
+    🌍 {switcher.current.name}
+  </span>
+  
+  <div class="lang-options">
+    {switcher.alternatives.map(({ code, name, url }) => (
+      <a href={url} class="lang-option" hreflang={code}>
+        {name}
+      </a>
+    ))}
+  </div>
+</div>
+
+<style>
+  .language-switcher {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 1rem;
+    background: #f5f5f5;
+    border-radius: 8px;
+  }
+  
+  .current-lang {
+    font-weight: 600;
+    color: #333;
+  }
+  
+  .lang-options {
+    display: flex;
+    gap: 0.5rem;
+  }
+  
+  .lang-option {
+    padding: 0.25rem 0.75rem;
+    color: #0066cc;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+  
+  .lang-option:hover {
+    background: #0066cc;
+    color: white;
+  }
+</style>
