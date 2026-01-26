@@ -1,55 +1,56 @@
 /**
  * Navigation Component - Client Component
  * components/Navigation.tsx
- * 
+ *
  * This is a CLIENT COMPONENT that:
  * - Uses useNextTranslation hook
  * - Has interactivity (active link, language switcher)
  */
 
-'use client';
+"use client";
 
-import { useNextTranslation } from 't9nkit/nextjs';
-import { usePathname } from 'next/navigation';
-import Link from 'next/link';
-import { supportedLanguages, languageNames } from '@/i18n-config';
+import { useNextTranslation } from "t9nkit/nextjs/client";
+import { usePathname } from "next/navigation";
+import Link from "next/link";
+import { supportedLanguages, languageNames } from "@/i18n-config";
 
 export default function Navigation() {
   const { t, language } = useNextTranslation();
   const pathname = usePathname();
-  
+
   // Get current path without language prefix
-  const pathWithoutLang = pathname.replace(new RegExp(`^/${language}`), '') || '/';
+  const pathWithoutLang =
+    pathname.replace(new RegExp(`^/${language}`), "") || "/";
 
   return (
     <nav className="navigation">
       <div className="nav-links">
-        <Link 
+        <Link
           href={`/${language}/`}
-          className={pathWithoutLang === '/' ? 'active' : ''}
+          className={pathWithoutLang === "/" ? "active" : ""}
         >
-          {t('nav.home')}
+          {t("nav.home")}
         </Link>
-        
-        <Link 
+
+        <Link
           href={`/${language}/products`}
-          className={pathWithoutLang.startsWith('/products') ? 'active' : ''}
+          className={pathWithoutLang.startsWith("/products") ? "active" : ""}
         >
-          {t('nav.products')}
+          {t("nav.products")}
         </Link>
-        
-        <Link 
+
+        <Link
           href={`/${language}/blog`}
-          className={pathWithoutLang.startsWith('/blog') ? 'active' : ''}
+          className={pathWithoutLang.startsWith("/blog") ? "active" : ""}
         >
-          {t('nav.blog')}
+          {t("nav.blog")}
         </Link>
-        
-        <Link 
+
+        <Link
           href={`/${language}/contact`}
-          className={pathWithoutLang.startsWith('/contact') ? 'active' : ''}
+          className={pathWithoutLang.startsWith("/contact") ? "active" : ""}
         >
-          {t('nav.contact')}
+          {t("nav.contact")}
         </Link>
       </div>
 
@@ -60,7 +61,7 @@ export default function Navigation() {
           <Link
             key={lang}
             href={`/${lang}${pathWithoutLang}`}
-            className={lang === language ? 'active' : ''}
+            className={lang === language ? "active" : ""}
           >
             {languageNames[lang]}
           </Link>

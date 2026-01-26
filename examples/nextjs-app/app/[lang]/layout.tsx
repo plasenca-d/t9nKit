@@ -1,17 +1,21 @@
 /**
  * Root Layout for Next.js App Router
  * app/[lang]/layout.tsx
- * 
+ *
  * This is a SERVER COMPONENT that:
  * - Receives language from URL params
  * - Provides translation context to all children
  * - Handles metadata generation
  */
 
-import { NextTranslationProvider } from 't9nkit/nextjs';
-import { i18nConfig, supportedLanguages, type AppLanguage } from '@/i18n-config';
-import type { Metadata } from 'next';
-import Navigation from '@/components/Navigation';
+import { NextTranslationProvider } from "t9nkit/nextjs/client";
+import {
+  i18nConfig,
+  supportedLanguages,
+  type AppLanguage,
+} from "@/i18n-config";
+import type { Metadata } from "next";
+import Navigation from "@/components/Navigation";
 
 interface Props {
   children: React.ReactNode;
@@ -25,21 +29,21 @@ interface Props {
  */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { lang } = params;
-  
+
   // You can use createServerTranslator here if needed
   // const { t } = createServerTranslator(i18nConfig, lang);
-  
+
   return {
     title: {
-      template: '%s | My App',
-      default: 'My App',
+      template: "%s | My App",
+      default: "My App",
     },
-    description: 'Next.js app with t9nKit',
+    description: "Next.js app with t9nKit",
     alternates: {
       languages: {
         es: `/es`,
         en: `/en`,
-        'x-default': `/es`,
+        "x-default": `/es`,
       },
     },
   };
@@ -61,7 +65,7 @@ export default function RootLayout({ children, params }: Props) {
   return (
     <html lang={lang}>
       <body>
-        {/* 
+        {/*
           NextTranslationProvider makes translations available to:
           - Client Components via useNextTranslation()
           - Server Components via createServerTranslator()

@@ -56,6 +56,26 @@
         "types": "./dist/nextjs.d.ts",
         "default": "./dist/nextjs.cjs"
       }
+    },
+    "./nextjs/client": {
+      "import": {
+        "types": "./dist/nextjs-client.d.ts",
+        "default": "./dist/nextjs-client.js"
+      },
+      "require": {
+        "types": "./dist/nextjs-client.d.ts",
+        "default": "./dist/nextjs-client.cjs"
+      }
+    },
+    "./nextjs/server": {
+      "import": {
+        "types": "./dist/nextjs-server.d.ts",
+        "default": "./dist/nextjs-server.js"
+      },
+      "require": {
+        "types": "./dist/nextjs-server.d.ts",
+        "default": "./dist/nextjs-server.cjs"
+      }
     }
   },
   "files": [
@@ -65,8 +85,8 @@
   ],
   "scripts": {
     "build": "bun run build:esm && bun run build:cjs && bun run build:types",
-    "build:esm": "bun build src/index.ts --outdir=dist --format=esm --target=node --minify && bun build src/astro.ts --outdir=dist --format=esm --target=node --minify && bun build src/react.tsx --outdir=dist --format=esm --target=node --minify --external react && bun build src/nextjs.tsx --outdir=dist --format=esm --target=node --minify --external react --external next && bun build src/core/index.ts --outdir=dist/core --format=esm --target=node --minify",
-    "build:cjs": "bun build src/index.ts --outfile=dist/index.cjs --format=cjs --target=node --minify && bun build src/astro.ts --outfile=dist/astro.cjs --format=cjs --target=node --minify && bun build src/react.tsx --outfile=dist/react.cjs --format=cjs --target=node --minify --external react && bun build src/nextjs.tsx --outfile=dist/nextjs.cjs --format=cjs --target=node --minify --external react --external next && bun build src/core/index.ts --outfile=dist/core/index.cjs --format=cjs --target=node --minify",
+    "build:esm": "bun build src/index.ts --outdir=dist --format=esm --target=node --minify && bun build src/astro.ts --outdir=dist --format=esm --target=node --minify && bun build src/react.tsx --outdir=dist --format=esm --target=node --minify --external react && bun build src/nextjs.tsx --outdir=dist --format=esm --target=node --minify --external react --external next && bun build src/nextjs-client.tsx --outdir=dist --format=esm --target=node --minify --external react --external next && bun build src/nextjs-server.ts --outdir=dist --format=esm --target=node --minify --external next && bun build src/core/index.ts --outdir=dist/core --format=esm --target=node --minify",
+    "build:cjs": "bun build src/index.ts --outfile=dist/index.cjs --format=cjs --target=node --minify && bun build src/astro.ts --outfile=dist/astro.cjs --format=cjs --target=node --minify && bun build src/react.tsx --outfile=dist/react.cjs --format=cjs --target=node --minify --external react && bun build src/nextjs.tsx --outfile=dist/nextjs.cjs --format=cjs --target=node --minify --external react --external next && bun build src/nextjs-client.tsx --outfile=dist/nextjs-client.cjs --format=cjs --target=node --minify --external react --external next && bun build src/nextjs-server.ts --outfile=dist/nextjs-server.cjs --format=cjs --target=node --minify --external next && bun build src/core/index.ts --outfile=dist/core/index.cjs --format=cjs --target=node --minify",
     "build:types": "tsc --declaration --emitDeclarationOnly --outDir dist",
     "dev": "bun run build --watch",
     "test": "bun test",

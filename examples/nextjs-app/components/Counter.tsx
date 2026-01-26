@@ -1,14 +1,14 @@
 /**
  * Counter Component - Client Component
  * components/Counter.tsx
- * 
+ *
  * Example of interactive Client Component with translations
  */
 
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useNextTranslation } from 't9nkit/nextjs';
+import { useState } from "react";
+import { useNextTranslation } from "t9nkit/nextjs/client";
 
 export default function Counter() {
   const { t } = useNextTranslation();
@@ -17,27 +17,21 @@ export default function Counter() {
   return (
     <div className="counter">
       <h3>Interactive Counter (Client Component)</h3>
-      
+
       {/* Pluralization example */}
       <p>
-        {count === 0 && 'No clicks yet'}
-        {count === 1 && '1 click'}
+        {count === 0 && "No clicks yet"}
+        {count === 1 && "1 click"}
         {count > 1 && `${count} clicks`}
       </p>
-      
+
       <div className="counter-buttons">
-        <button onClick={() => setCount(count - 1)}>
-          -
-        </button>
+        <button onClick={() => setCount(count - 1)}>-</button>
         <span>{count}</span>
-        <button onClick={() => setCount(count + 1)}>
-          +
-        </button>
+        <button onClick={() => setCount(count + 1)}>+</button>
       </div>
-      
-      <button onClick={() => setCount(0)}>
-        Reset
-      </button>
+
+      <button onClick={() => setCount(0)}>Reset</button>
     </div>
   );
 }
