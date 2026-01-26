@@ -1,6 +1,6 @@
 {
   "name": "t9nkit",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Complete i18n translation system with zero dependencies - Works on server and client",
   "type": "module",
   "main": "./dist/index.js",
