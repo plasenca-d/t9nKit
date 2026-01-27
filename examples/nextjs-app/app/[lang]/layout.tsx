@@ -8,12 +8,8 @@
  * - Handles metadata generation
  */
 
-import { NextTranslationProvider } from "t9nkit/nextjs/client";
-import {
-  i18nConfig,
-  supportedLanguages,
-  type AppLanguage,
-} from "@/i18n-config";
+import { supportedLanguages, type AppLanguage } from "@/i18n-config";
+import Providers from "@/components/Providers";
 import type { Metadata } from "next";
 import Navigation from "@/components/Navigation";
 
@@ -70,10 +66,10 @@ export default function RootLayout({ children, params }: Props) {
           - Client Components via useNextTranslation()
           - Server Components via createServerTranslator()
         */}
-        <NextTranslationProvider config={i18nConfig} language={lang}>
+        <Providers language={lang}>
           <Navigation />
           <main>{children}</main>
-        </NextTranslationProvider>
+        </Providers>
       </body>
     </html>
   );
