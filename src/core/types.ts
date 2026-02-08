@@ -57,7 +57,7 @@ export type LanguageCode = string;
 
 /**
  * Translation dictionary structure
- * 
+ *
  * @example
  * const translations: TranslationDictionary = {
  *   en: { "hello": "Hello" },
@@ -77,21 +77,68 @@ export interface T9nKitConfig<T extends LanguageCode = string> {
    * Translation dictionary
    */
   translations: Record<T, Record<string, TranslationValue>>;
-  
+
   /**
    * Default/fallback language
    */
   defaultLanguage: T;
-  
+
   /**
    * Available languages
    * @optional
    */
   languages?: Record<T, string>;
-  
+
   /**
    * Enable console warnings for missing translations
    * @default true
    */
   warnOnMissing?: boolean;
+
+  /**
+   * Namespaced translation dictionaries
+   * Keys are namespace names, values are per-language translations
+   *
+   * @example
+   * ```ts
+   * namespaces: {
+   *   auth: {
+   *     en: { login: "Log in", logout: "Log out" },
+   *     es: { login: "Iniciar sesión", logout: "Cerrar sesión" },
+   *   },
+   *   dashboard: {
+   *     en: { title: "Dashboard" },
+   *     es: { title: "Panel" },
+   *   },
+   * }
+   * ```
+   */
+  namespaces?: Record<string, Record<T, Record<string, TranslationValue>>>;
+
+  /**
+   * Default namespace used when keys don't include a ":" prefix
+   * @optional
+   */
+  defaultNamespace?: string;
+
+  /**
+   * Lazy-loaded namespace loaders
+   * Each key is a namespace name, value is an async function that loads
+   * translations for a given language on demand
+   *
+   * @example
+   * ```ts
+   * lazyNamespaces: {
+   *   dashboard: (lang) => import(`./locales/${lang}/dashboard.json`),
+   * }
+   * ```
+   */
+  lazyNamespaces?: Record<string, TranslationLoader<T>>;
 }
+
+/**
+ * Async loader function for lazy-loaded namespaces
+ */
+export type TranslationLoader<T extends LanguageCode = string> = (
+  lang: T,
+) => Promise<Record<string, TranslationValue>>;

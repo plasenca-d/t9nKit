@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach } from "bun:test";
 import { T9nKit, createTranslator } from "./translator";
-import type { T9nKitConfig } from "./types";
+import type { T9nKitConfig, TranslationValue } from "./types";
 
 describe("T9nKit", () => {
   let warnCalls: string[];
@@ -389,5 +389,387 @@ describe("createTranslator", () => {
     expect(t("items", { count: 0 })).toBe("Sin artículos");
     expect(t("items", { count: 1 })).toBe("1 artículo");
     expect(t("items", { count: 5 })).toBe("5 artículos");
+  });
+});
+
+describe("Namespaces", () => {
+  let warnCalls: string[];
+  let originalWarn: typeof console.warn;
+
+  beforeEach(() => {
+    warnCalls = [];
+    originalWarn = console.warn;
+    console.warn = (msg: string) => {
+      warnCalls.push(msg);
+    };
+  });
+
+  const nsConfig: T9nKitConfig<"en" | "es"> = {
+    translations: {
+      en: { greeting: "Hello" },
+      es: { greeting: "Hola" },
+    },
+    defaultLanguage: "es",
+    namespaces: {
+      auth: {
+        en: { login: "Log in", logout: "Log out" },
+        es: { login: "Iniciar sesión", logout: "Cerrar sesión" },
+      },
+      dashboard: {
+        en: { title: "Dashboard", welcome: "Welcome, {name}!" },
+        es: { title: "Panel", welcome: "Bienvenido, {name}!" },
+      },
+    },
+  };
+
+  test("translates namespaced keys with colon syntax", () => {
+    const kit = new T9nKit(nsConfig);
+    kit.setLanguage("es");
+    console.warn = originalWarn;
+    expect(kit.translate("auth:login")).toBe("Iniciar sesión");
+    expect(kit.translate("auth:logout")).toBe("Cerrar sesión");
+    expect(kit.translate("dashboard:title")).toBe("Panel");
+  });
+
+  test("translates top-level keys without namespace", () => {
+    const kit = new T9nKit(nsConfig);
+    kit.setLanguage("es");
+    console.warn = originalWarn;
+    expect(kit.translate("greeting")).toBe("Hola");
+  });
+
+  test("supports interpolation in namespaced keys", () => {
+    const kit = new T9nKit(nsConfig);
+    kit.setLanguage("en");
+    console.warn = originalWarn;
+    expect(kit.translate("dashboard:welcome", { name: "Alice" })).toBe(
+      "Welcome, Alice!",
+    );
+  });
+
+  test("falls back to default language in namespace", () => {
+    const config: T9nKitConfig<"en" | "es"> = {
+      translations: { en: {}, es: {} },
+      defaultLanguage: "es",
+      namespaces: {
+        auth: {
+          en: {},
+          es: { login: "Iniciar sesión" },
+        },
+      },
+    };
+    const kit = new T9nKit(config);
+    kit.setLanguage("en");
+    console.warn = originalWarn;
+    expect(kit.translate("auth:login")).toBe("Iniciar sesión");
+  });
+
+  test("returns key when namespaced translation not found", () => {
+    const kit = new T9nKit(nsConfig);
+    kit.translate("auth:nonexistent");
+    console.warn = originalWarn;
+    expect(warnCalls.some((w) => w.includes("missing"))).toBe(true);
+  });
+
+  test("hasTranslation works with namespaced keys", () => {
+    const kit = new T9nKit(nsConfig);
+    console.warn = originalWarn;
+    expect(kit.hasTranslation("auth:login")).toBe(true);
+    expect(kit.hasTranslation("auth:nonexistent")).toBe(false);
+  });
+
+  test("getTranslation works with namespaced keys", () => {
+    const kit = new T9nKit(nsConfig);
+    kit.setLanguage("en");
+    console.warn = originalWarn;
+    expect(kit.getTranslation("dashboard:welcome")).toBe("Welcome, {name}!");
+  });
+
+  test("addNamespace adds a new namespace at runtime", () => {
+    const kit = new T9nKit(nsConfig);
+    kit.setLanguage("en");
+    kit.addNamespace("settings", {
+      en: { theme: "Theme" },
+      es: { theme: "Tema" },
+    } as Record<"en" | "es", Record<string, TranslationValue>>);
+    console.warn = originalWarn;
+    expect(kit.translate("settings:theme")).toBe("Theme");
+    expect(kit.hasNamespace("settings")).toBe(true);
+  });
+
+  test("addNamespace merges into existing namespace", () => {
+    const kit = new T9nKit(nsConfig);
+    kit.setLanguage("en");
+    kit.addNamespace("auth", {
+      en: { register: "Register" },
+      es: { register: "Registrarse" },
+    } as Record<"en" | "es", Record<string, TranslationValue>>);
+    console.warn = originalWarn;
+    // New key
+    expect(kit.translate("auth:register")).toBe("Register");
+    // Old key still works
+    expect(kit.translate("auth:login")).toBe("Log in");
+  });
+
+  test("removeNamespace removes a namespace", () => {
+    const kit = new T9nKit(nsConfig);
+    kit.removeNamespace("auth");
+    console.warn = originalWarn;
+    expect(kit.hasNamespace("auth")).toBe(false);
+    expect(kit.translate("auth:login")).toBe("auth:login");
+  });
+
+  test("getNamespaces returns all loaded namespaces", () => {
+    const kit = new T9nKit(nsConfig);
+    console.warn = originalWarn;
+    const ns = kit.getNamespaces();
+    expect(ns).toContain("auth");
+    expect(ns).toContain("dashboard");
+    expect(ns.length).toBe(2);
+  });
+
+  test("defaultNamespace resolves keys without colon", () => {
+    const config: T9nKitConfig<"en" | "es"> = {
+      translations: { en: {}, es: {} },
+      defaultLanguage: "en",
+      defaultNamespace: "common",
+      namespaces: {
+        common: {
+          en: { hello: "Hello from NS" },
+          es: { hello: "Hola desde NS" },
+        },
+      },
+    };
+    const kit = new T9nKit(config);
+    kit.setLanguage("en");
+    console.warn = originalWarn;
+    expect(kit.translate("hello")).toBe("Hello from NS");
+  });
+
+  test("top-level translations still work when defaultNamespace is set", () => {
+    const config: T9nKitConfig<"en" | "es"> = {
+      translations: {
+        en: { fallback: "From top-level" },
+        es: { fallback: "Desde nivel superior" },
+      },
+      defaultLanguage: "en",
+      defaultNamespace: "common",
+      namespaces: {
+        common: {
+          en: { hello: "Hello" },
+          es: { hello: "Hola" },
+        },
+      },
+    };
+    const kit = new T9nKit(config);
+    kit.setLanguage("en");
+    console.warn = originalWarn;
+    // Key in default namespace
+    expect(kit.translate("hello")).toBe("Hello");
+    // Key not in default namespace, falls back to top-level
+    expect(kit.translate("fallback")).toBe("From top-level");
+  });
+
+  test("createTranslator exposes namespace methods", () => {
+    const { t, addNamespace, hasNamespace, getNamespaces, removeNamespace } =
+      createTranslator(nsConfig, "en");
+    console.warn = originalWarn;
+
+    expect(t("auth:login")).toBe("Log in");
+    expect(hasNamespace("auth")).toBe(true);
+    expect(getNamespaces()).toContain("auth");
+
+    addNamespace("extra", {
+      en: { test: "Test" },
+      es: { test: "Prueba" },
+    } as Record<"en" | "es", Record<string, TranslationValue>>);
+    expect(t("extra:test")).toBe("Test");
+
+    removeNamespace("extra");
+    expect(hasNamespace("extra")).toBe(false);
+  });
+});
+
+describe("Lazy Loading", () => {
+  let warnCalls: string[];
+  let originalWarn: typeof console.warn;
+
+  beforeEach(() => {
+    warnCalls = [];
+    originalWarn = console.warn;
+    console.warn = (msg: string) => {
+      warnCalls.push(msg);
+    };
+  });
+
+  test("loads namespace and translates after loading", async () => {
+    const config: T9nKitConfig<"en" | "es"> = {
+      translations: { en: {}, es: {} },
+      defaultLanguage: "en",
+      lazyNamespaces: {
+        lazy: async (lang) => {
+          if (lang === "en") return { title: "Lazy Title" };
+          return { title: "Título Lazy" };
+        },
+      },
+    };
+    const kit = new T9nKit(config);
+    kit.setLanguage("en");
+
+    // Before loading — returns key
+    expect(kit.translate("lazy:title")).toBe("lazy:title");
+
+    await kit.loadNamespace("lazy");
+    console.warn = originalWarn;
+    expect(kit.translate("lazy:title")).toBe("Lazy Title");
+  });
+
+  test("deduplicates concurrent loads", async () => {
+    let loadCount = 0;
+    const config: T9nKitConfig<"en" | "es"> = {
+      translations: { en: {}, es: {} },
+      defaultLanguage: "en",
+      lazyNamespaces: {
+        dedup: async () => {
+          loadCount++;
+          return { key: "value" };
+        },
+      },
+    };
+    const kit = new T9nKit(config);
+
+    // Fire multiple concurrent loads
+    const p1 = kit.loadNamespace("dedup");
+    const p2 = kit.loadNamespace("dedup");
+    const p3 = kit.loadNamespace("dedup");
+    await Promise.all([p1, p2, p3]);
+    console.warn = originalWarn;
+
+    expect(loadCount).toBe(1);
+    expect(kit.translate("dedup:key")).toBe("value");
+  });
+
+  test("isNamespaceLoaded tracks state", async () => {
+    const config: T9nKitConfig<"en" | "es"> = {
+      translations: { en: {}, es: {} },
+      defaultLanguage: "en",
+      lazyNamespaces: {
+        track: async () => ({ key: "val" }),
+      },
+    };
+    const kit = new T9nKit(config);
+
+    expect(kit.isNamespaceLoaded("track")).toBe(false);
+    await kit.loadNamespace("track");
+    console.warn = originalWarn;
+    expect(kit.isNamespaceLoaded("track")).toBe(true);
+  });
+
+  test("loads per language", async () => {
+    const config: T9nKitConfig<"en" | "es"> = {
+      translations: { en: {}, es: {} },
+      defaultLanguage: "en",
+      lazyNamespaces: {
+        perLang: async (lang) => {
+          if (lang === "en") return { word: "Hello" };
+          return { word: "Hola" };
+        },
+      },
+    };
+    const kit = new T9nKit(config);
+
+    await kit.loadNamespace("perLang", "en");
+    await kit.loadNamespace("perLang", "es");
+    console.warn = originalWarn;
+
+    kit.setLanguage("en");
+    expect(kit.translate("perLang:word")).toBe("Hello");
+
+    kit.setLanguage("es");
+    expect(kit.translate("perLang:word")).toBe("Hola");
+  });
+
+  test("loadNamespaces loads multiple at once", async () => {
+    const config: T9nKitConfig<"en" | "es"> = {
+      translations: { en: {}, es: {} },
+      defaultLanguage: "en",
+      lazyNamespaces: {
+        ns1: async () => ({ a: "A" }),
+        ns2: async () => ({ b: "B" }),
+      },
+    };
+    const kit = new T9nKit(config);
+
+    await kit.loadNamespaces(["ns1", "ns2"]);
+    console.warn = originalWarn;
+
+    expect(kit.translate("ns1:a")).toBe("A");
+    expect(kit.translate("ns2:b")).toBe("B");
+  });
+
+  test("registerLoader adds loader at runtime", async () => {
+    const config: T9nKitConfig<"en" | "es"> = {
+      translations: { en: {}, es: {} },
+      defaultLanguage: "en",
+    };
+    const kit = new T9nKit(config);
+
+    kit.registerLoader("runtime", async () => ({ msg: "Dynamic" }));
+    await kit.loadNamespace("runtime");
+    console.warn = originalWarn;
+
+    expect(kit.translate("runtime:msg")).toBe("Dynamic");
+  });
+
+  test("handles loader errors gracefully", async () => {
+    const config: T9nKitConfig<"en" | "es"> = {
+      translations: { en: {}, es: {} },
+      defaultLanguage: "en",
+      lazyNamespaces: {
+        broken: async () => {
+          throw new Error("Network error");
+        },
+      },
+    };
+    const kit = new T9nKit(config);
+
+    let threw = false;
+    try {
+      await kit.loadNamespace("broken");
+    } catch {
+      threw = true;
+    }
+    console.warn = originalWarn;
+
+    expect(threw).toBe(true);
+    // Should not be marked as loaded
+    expect(kit.isNamespaceLoaded("broken")).toBe(false);
+  });
+
+  test("createTranslator exposes lazy loading methods", async () => {
+    const config: T9nKitConfig<"en" | "es"> = {
+      translations: { en: {}, es: {} },
+      defaultLanguage: "en",
+      lazyNamespaces: {
+        api: async () => ({ endpoint: "/api" }),
+      },
+    };
+    const {
+      t,
+      loadNamespace,
+      loadNamespaces,
+      isNamespaceLoaded,
+      registerLoader,
+    } = createTranslator(config, "en");
+
+    expect(isNamespaceLoaded("api")).toBe(false);
+    await loadNamespace("api");
+    console.warn = originalWarn;
+    expect(isNamespaceLoaded("api")).toBe(true);
+    expect(t("api:endpoint")).toBe("/api");
+
+    registerLoader("extra", async () => ({ x: "X" }));
+    await loadNamespaces(["extra"]);
+    expect(t("extra:x")).toBe("X");
   });
 });

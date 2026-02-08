@@ -1,6 +1,6 @@
 {
   "name": "t9nkit",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Complete i18n translation system with zero dependencies - Works on server and client",
   "type": "module",
   "main": "./dist/index.js",
@@ -101,7 +101,8 @@
     "dev": "bun run build --watch",
     "test": "bun test",
     "prepublishOnly": "bun run build",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "bench": "cd benchmarks && bun install && bun run run.ts"
   },
   "keywords": [
     "i18n",

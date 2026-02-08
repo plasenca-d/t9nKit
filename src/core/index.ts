@@ -3,7 +3,6 @@
  * Complete translation system with zero dependencies
  */
 
-// Export types
 export type {
   TranslationValue,
   TranslationFunction,
@@ -15,9 +14,9 @@ export type {
   LanguageCode,
   TranslationDictionary,
   T9nKitConfig,
+  TranslationLoader,
 } from "./types";
 
-// Export helpers (for advanced usage)
 export {
   interpolate,
   getPluralForm,
@@ -28,5 +27,14 @@ export {
   getNestedValue,
 } from "./helpers";
 
-// Export main translator
+export {
+  detectLanguage,
+  matchLanguage,
+  persistLanguage,
+} from "./detect-language";
+export type {
+  DetectLanguageOptions,
+  PersistLanguageOptions,
+} from "./detect-language";
+
 export { T9nKit, createTranslator } from "./translator";

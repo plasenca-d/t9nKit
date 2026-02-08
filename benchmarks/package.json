@@ -1,0 +1,8 @@
+{
+  "name": "t9nkit-benchmarks",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "i18next": "^24.0.0"
+  }
+}

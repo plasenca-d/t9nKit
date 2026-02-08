@@ -4,6 +4,8 @@ import type {
   PluralCount,
   TranslationParams,
   TranslationPlural,
+  TranslationValue,
+  TranslationLoader,
 } from "./types";
 import {
   formatCurrency,
@@ -16,12 +18,35 @@ import {
 } from "./helpers";
 
 /**
+ * Parse a key into namespace + path
+ * "auth:login.title" -> { namespace: "auth", path: "login.title" }
+ * "login.title"      -> { namespace: null, path: "login.title" }
+ */
+function parseKey(key: string): { namespace: string | null; path: string } {
+  const colonIndex = key.indexOf(":");
+  if (colonIndex === -1) {
+    return { namespace: null, path: key };
+  }
+  return {
+    namespace: key.slice(0, colonIndex),
+    path: key.slice(colonIndex + 1),
+  };
+}
+
+/**
  * T9nKit - Translation Kit
  * Main translator class
  */
 export class T9nKit<T extends LanguageCode = string> {
   private config: T9nKitConfig<T>;
   private currentLanguage: T;
+  private namespaceStore: Map<
+    string,
+    Record<T, Record<string, TranslationValue>>
+  > = new Map();
+  private loaders: Map<string, TranslationLoader<T>> = new Map();
+  private loadingPromises: Map<string, Promise<void>> = new Map();
+  private loadedSet: Set<string> = new Set();
 
   constructor(config: T9nKitConfig<T>) {
     this.config = {
@@ -29,6 +54,21 @@ export class T9nKit<T extends LanguageCode = string> {
       ...config,
     };
     this.currentLanguage = config.defaultLanguage;
+
+    if (config.namespaces) {
+      for (const [name, translations] of Object.entries(config.namespaces)) {
+        this.namespaceStore.set(
+          name,
+          translations as Record<T, Record<string, TranslationValue>>,
+        );
+      }
+    }
+
+    if (config.lazyNamespaces) {
+      for (const [name, loader] of Object.entries(config.lazyNamespaces)) {
+        this.loaders.set(name, loader as TranslationLoader<T>);
+      }
+    }
   }
 
   /**
@@ -56,9 +96,167 @@ export class T9nKit<T extends LanguageCode = string> {
     return this.config.languages;
   }
 
+  // ─── Namespace methods ──────────────────────────────────────────────────
+
+  /**
+   * Add a namespace at runtime
+   */
+  addNamespace(
+    name: string,
+    translations: Record<T, Record<string, TranslationValue>>,
+  ): void {
+    const existing = this.namespaceStore.get(name);
+    if (existing) {
+      // Merge: for each language, merge keys
+      for (const lang of Object.keys(translations) as T[]) {
+        if (existing[lang]) {
+          existing[lang] = { ...existing[lang], ...translations[lang] };
+        } else {
+          existing[lang] = translations[lang];
+        }
+      }
+    } else {
+      this.namespaceStore.set(name, { ...translations });
+    }
+  }
+
+  /**
+   * Check if a namespace exists
+   */
+  hasNamespace(name: string): boolean {
+    return this.namespaceStore.has(name) || this.loaders.has(name);
+  }
+
+  /**
+   * Get all loaded namespace names
+   */
+  getNamespaces(): string[] {
+    return Array.from(this.namespaceStore.keys());
+  }
+
+  /**
+   * Remove a namespace
+   */
+  removeNamespace(name: string): void {
+    this.namespaceStore.delete(name);
+
+    for (const key of this.loadedSet) {
+      if (key.startsWith(name + ":")) {
+        this.loadedSet.delete(key);
+      }
+    }
+  }
+
+  // ─── Lazy loading methods ───────────────────────────────────────────────
+
+  /**
+   * Register a lazy loader for a namespace
+   */
+  registerLoader(namespace: string, loader: TranslationLoader<T>): void {
+    this.loaders.set(namespace, loader);
+  }
+
+  /**
+   * Load a namespace asynchronously for a language (or current language)
+   * Deduplicates concurrent calls for the same namespace+lang combo
+   */
+  async loadNamespace(namespace: string, lang?: T): Promise<void> {
+    const targetLang = lang || this.currentLanguage;
+    const cacheKey = `${namespace}:${targetLang}`;
+
+    if (this.loadedSet.has(cacheKey)) return;
+
+    const existing = this.loadingPromises.get(cacheKey);
+    if (existing) return existing;
+
+    const loader = this.loaders.get(namespace);
+    if (!loader) {
+      this.warn(`No loader registered for namespace "${namespace}"`);
+      return;
+    }
+
+    const promise = (async () => {
+      try {
+        const translations = await loader(targetLang);
+        const nsTranslations = {} as Record<
+          T,
+          Record<string, TranslationValue>
+        >;
+        nsTranslations[targetLang] = translations;
+        this.addNamespace(namespace, nsTranslations);
+        this.loadedSet.add(cacheKey);
+      } finally {
+        this.loadingPromises.delete(cacheKey);
+      }
+    })();
+
+    this.loadingPromises.set(cacheKey, promise);
+    return promise;
+  }
+
+  /**
+   * Load multiple namespaces at once
+   */
+  async loadNamespaces(namespaces: string[], lang?: T): Promise<void> {
+    await Promise.all(namespaces.map((ns) => this.loadNamespace(ns, lang)));
+  }
+
+  /**
+   * Check if a namespace has been loaded for a language
+   */
+  isNamespaceLoaded(namespace: string, lang?: T): boolean {
+    const targetLang = lang || this.currentLanguage;
+    return this.loadedSet.has(`${namespace}:${targetLang}`);
+  }
+
+  // ─── Translation resolution ─────────────────────────────────────────────
+
+  /**
+   * Resolve a translation value from namespaces or top-level translations
+   */
+  private resolveTranslation(
+    key: string,
+    targetLang: T,
+  ): { value: any; originalKey: string } {
+    const { namespace, path } = parseKey(key);
+
+    // Explicit namespace: "auth:login.title"
+    if (namespace) {
+      const nsData = this.namespaceStore.get(namespace);
+      if (nsData) {
+        const value =
+          getNestedValue(nsData[targetLang], path) ??
+          getNestedValue(nsData[this.config.defaultLanguage], path);
+        if (value !== undefined) return { value, originalKey: key };
+      }
+
+      return { value: undefined, originalKey: key };
+    }
+
+    // Default namespace (keys without ":")
+    if (this.config.defaultNamespace) {
+      const nsData = this.namespaceStore.get(this.config.defaultNamespace);
+      if (nsData) {
+        const value =
+          getNestedValue(nsData[targetLang], path) ??
+          getNestedValue(nsData[this.config.defaultLanguage], path);
+        if (value !== undefined) return { value, originalKey: key };
+      }
+    }
+
+    // Top-level translations
+    const value =
+      getNestedValue(this.config.translations[targetLang], path) ??
+      getNestedValue(
+        this.config.translations[this.config.defaultLanguage],
+        path,
+      );
+    return { value, originalKey: key };
+  }
+
   /**
    * Main translation function
-   * Supports dot notation (nav.home) and nested objects
+   * Supports dot notation (nav.home), namespaces (auth:login), and nested objects
    */
   translate(
     key: string,
@@ -66,18 +264,9 @@ export class T9nKit<T extends LanguageCode = string> {
     lang?: T,
   ): string {
     const targetLang = lang || this.currentLanguage;
+    const { value: translation } = this.resolveTranslation(key, targetLang);
 
-    let translation = getNestedValue(this.config.translations[targetLang], key);
-
-    // Fallback to default language if not found
-    if (!translation) {
-      translation = getNestedValue(
-        this.config.translations[this.config.defaultLanguage],
-        key,
-      );
-    }
-
-    if (!translation) {
+    if (translation === undefined || translation === null) {
       this.warn(`Translation missing for key: ${key}`);
       return key;
     }
@@ -163,13 +352,8 @@ export class T9nKit<T extends LanguageCode = string> {
    */
   hasTranslation(key: string, lang?: T): boolean {
     const targetLang = lang || this.currentLanguage;
-    const translation =
-      getNestedValue(this.config.translations[targetLang], key) ||
-      getNestedValue(
-        this.config.translations[this.config.defaultLanguage],
-        key,
-      );
-    return translation !== undefined;
+    const { value } = this.resolveTranslation(key, targetLang);
+    return value !== undefined;
   }
 
   /**
@@ -177,12 +361,7 @@ export class T9nKit<T extends LanguageCode = string> {
    */
   getTranslation(key: string, lang?: T): string {
     const targetLang = lang || this.currentLanguage;
-    const translation =
-      getNestedValue(this.config.translations[targetLang], key) ||
-      getNestedValue(
-        this.config.translations[this.config.defaultLanguage],
-        key,
-      );
+    const { value: translation } = this.resolveTranslation(key, targetLang);
 
     if (typeof translation === "string") {
       return translation;
@@ -225,67 +404,70 @@ export function createTranslator<T extends LanguageCode = string>(
   setLanguage: (newLang: T) => void;
   hasTranslation: (key: string) => boolean;
   getTranslation: (key: string) => string;
+  addNamespace: (
+    name: string,
+    translations: Record<T, Record<string, TranslationValue>>,
+  ) => void;
+  hasNamespace: (name: string) => boolean;
+  getNamespaces: () => string[];
+  removeNamespace: (name: string) => void;
+  loadNamespace: (namespace: string, lang?: T) => Promise<void>;
+  loadNamespaces: (namespaces: string[], lang?: T) => Promise<void>;
+  isNamespaceLoaded: (namespace: string, lang?: T) => boolean;
+  registerLoader: (namespace: string, loader: TranslationLoader<T>) => void;
 } {
   const kit = new T9nKit(config);
   if (lang) kit.setLanguage(lang);
 
   return {
-    /**
-     * Main translation function
-     */
     t: (
       key: string,
       params?: TranslationParams & { count?: PluralCount },
     ): string => kit.translate(key, params),
 
-    /**
-     * Format number according to language
-     * @example tn(1234.56) // "1.234,56" (es) o "1,234.56" (en)
-     */
     tn: (value: number, options?: Intl.NumberFormatOptions): string =>
       kit.formatNumber(value, options),
 
-    /**
-     * Format date according to language
-     * @example td(new Date()) // "25 de octubre de 2025" (es)
-     */
     td: (
       date: Date | string | number,
       options?: Intl.DateTimeFormatOptions,
     ): string => kit.formatDate(date, options),
 
-    /**
-     * Format currency according to language
-     * @example tc(1234.56, "EUR") // "1.234,56 €" (es)
-     */
     tc: (value: number, currency?: string): string =>
       kit.formatCurrency(value, currency),
 
-    /**
-     * Format relative time
-     * @example tr(-1, "day") // "hace 1 día" (es) o "1 day ago" (en)
-     */
     tr: (value: number, unit: Intl.RelativeTimeFormatUnit): string =>
       kit.formatRelativeTime(value, unit),
 
-    /**
-     * Get current language
-     */
     getLanguage: (): T => kit.getLanguage(),
 
-    /**
-     * Set current language
-     */
     setLanguage: (newLang: T): void => kit.setLanguage(newLang),
 
-    /**
-     * Check if translation exists
-     */
     hasTranslation: (key: string): boolean => kit.hasTranslation(key),
 
-    /**
-     * Get raw translation
-     */
     getTranslation: (key: string): string => kit.getTranslation(key),
+
+    addNamespace: (
+      name: string,
+      translations: Record<T, Record<string, TranslationValue>>,
+    ): void => kit.addNamespace(name, translations),
+
+    hasNamespace: (name: string): boolean => kit.hasNamespace(name),
+
+    getNamespaces: (): string[] => kit.getNamespaces(),
+
+    removeNamespace: (name: string): void => kit.removeNamespace(name),
+
+    loadNamespace: (namespace: string, lng?: T): Promise<void> =>
+      kit.loadNamespace(namespace, lng),
+
+    loadNamespaces: (namespaces: string[], lng?: T): Promise<void> =>
+      kit.loadNamespaces(namespaces, lng),
+
+    isNamespaceLoaded: (namespace: string, lng?: T): boolean =>
+      kit.isNamespaceLoaded(namespace, lng),
+
+    registerLoader: (namespace: string, loader: TranslationLoader<T>): void =>
+      kit.registerLoader(namespace, loader),
   };
 }

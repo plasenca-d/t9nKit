@@ -123,3 +123,68 @@ export function loadJsonTranslations<T extends string = string>(
     warnOnMissing: options.warnOnMissing,
   };
 }
+
+/**
+ * Load namespaced translations from JSON objects
+ *
+ * @example
+ * ```typescript
+ * const config = loadNamespacedJsonTranslations(
+ *   {
+ *     auth: {
+ *       en: { login: "Log in", logout: "Log out" },
+ *       es: { login: "Iniciar sesión", logout: "Cerrar sesión" },
+ *     },
+ *     dashboard: {
+ *       en: { title: "Dashboard" },
+ *       es: { title: "Panel" },
+ *     },
+ *   },
+ *   { defaultLanguage: 'en' }
+ * )
+ *
+ * const { t } = createTranslator(config, 'en')
+ * t('auth:login') // "Log in"
+ * ```
+ */
+export function loadNamespacedJsonTranslations<T extends string = string>(
+  namespaces: Record<string, Record<T, JsonTranslationFile>>,
+  options: LoaderOptions<T> & { defaultNamespace?: string },
+): LoaderResult<T> {
+  const convertedNamespaces: Record<
+    string,
+    Record<T, Record<string, TranslationValue>>
+  > = {};
+
+  for (const [nsName, nsTranslations] of Object.entries(namespaces)) {
+    const converted = {} as Record<T, Record<string, TranslationValue>>;
+    for (const [lang, json] of Object.entries(nsTranslations) as [
+      T,
+      JsonTranslationFile,
+    ][]) {
+      converted[lang] = convertJsonFile(json);
+    }
+    convertedNamespaces[nsName] = converted;
+  }
+
+  // Build empty top-level translations for each language
+  const languages = new Set<T>();
+  for (const nsTranslations of Object.values(namespaces)) {
+    for (const lang of Object.keys(nsTranslations) as T[]) {
+      languages.add(lang);
+    }
+  }
+  const emptyTranslations = {} as Record<T, Record<string, TranslationValue>>;
+  for (const lang of languages) {
+    emptyTranslations[lang] = {};
+  }
+
+  return {
+    translations: emptyTranslations,
+    defaultLanguage: options.defaultLanguage,
+    languages: options.languages,
+    warnOnMissing: options.warnOnMissing,
+    namespaces: convertedNamespaces,
+    defaultNamespace: options.defaultNamespace,
+  };
+}

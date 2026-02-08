@@ -11,7 +11,7 @@ export interface LoaderOptions<T extends LanguageCode = string> {
   /**
    * Default/fallback language
    */
-  defaultLanguage: T;
+  defaultLanguage: NoInfer<T>;
 
   /**
    * Available languages with display names
@@ -41,41 +41,6 @@ export interface JsonPluralValue {
   zero?: string;
   one: string;
   other: string;
-}
-
-/**
- * ARB (Application Resource Bundle) file structure
- * Used by Flutter/Dart for internationalization
- */
-export interface ArbFile {
-  /**
-   * Locale identifier
-   */
-  "@@locale"?: string;
-
-  /**
-   * Last modified timestamp
-   */
-  "@@last_modified"?: string;
-
-  /**
-   * Translation entries and metadata
-   */
-  [key: string]: ArbValue | ArbMetadata | string | undefined;
-}
-
-export type ArbValue = string;
-
-export interface ArbMetadata {
-  description?: string;
-  placeholders?: Record<
-    string,
-    {
-      type?: string;
-      example?: string;
-      description?: string;
-    }
-  >;
 }
 
 /**

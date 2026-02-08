@@ -1,6 +1,8 @@
 import { describe, it, expect } from "bun:test";
-import { loadJsonTranslations } from "./json-loader";
-import { loadArbTranslations } from "./arb-loader";
+import {
+  loadJsonTranslations,
+  loadNamespacedJsonTranslations,
+} from "./json-loader";
 import { createTranslator } from "../core";
 
 describe("JSON Loader", () => {
@@ -87,7 +89,7 @@ describe("JSON Loader", () => {
         defaultLanguage: "en",
         languages: { en: "English" },
         warnOnMissing: false,
-      }
+      },
     );
 
     expect(config.languages).toEqual({ en: "English" });
@@ -95,142 +97,81 @@ describe("JSON Loader", () => {
   });
 });
 
-describe("ARB Loader", () => {
-  it("should load simple string translations", () => {
-    const en = {
-      "@@locale": "en",
-      greeting: "Hello",
-      farewell: "Goodbye",
-    };
-    const es = {
-      "@@locale": "es",
-      greeting: "Hola",
-      farewell: "Adiós",
-    };
-
-    const config = loadArbTranslations({ en, es }, { defaultLanguage: "es" });
-
-    expect(config.translations.en.greeting).toBe("Hello");
-    expect(config.translations.es.greeting).toBe("Hola");
-  });
-
-  it("should ignore ARB metadata keys", () => {
-    const en = {
-      "@@locale": "en",
-      "@@last_modified": "2024-01-01",
-      greeting: "Hello, {name}!",
-      "@greeting": {
-        description: "Greeting message",
-        placeholders: {
-          name: { type: "String" },
+describe("Namespaced JSON Loader", () => {
+  it("should load namespaced translations", () => {
+    const config = loadNamespacedJsonTranslations(
+      {
+        auth: {
+          en: { login: "Log in", logout: "Log out" },
+          es: { login: "Iniciar sesión", logout: "Cerrar sesión" },
+        },
+        dashboard: {
+          en: { title: "Dashboard" },
+          es: { title: "Panel" },
         },
       },
-    };
-
-    const config = loadArbTranslations({ en }, { defaultLanguage: "en" });
-
-    expect(config.translations.en["@@locale"]).toBeUndefined();
-    expect(config.translations.en["@greeting"]).toBeUndefined();
-    expect(config.translations.en.greeting).toBe("Hello, {name}!");
-  });
-
-  it("should handle interpolation (same format as t9nKit)", () => {
-    const en = {
-      welcome: "Welcome, {name}!",
-    };
-    const es = {
-      welcome: "¡Bienvenido, {name}!",
-    };
-
-    const config = loadArbTranslations({ en, es }, { defaultLanguage: "en" });
-    const { t } = createTranslator(config, "es");
-
-    expect(t("welcome", { name: "María" })).toBe("¡Bienvenido, María!");
-  });
-
-  it("should parse ICU plural syntax", () => {
-    const en = {
-      itemCount:
-        "{count, plural, zero{No items} one{1 item} other{{count} items}}",
-    };
-
-    const config = loadArbTranslations({ en }, { defaultLanguage: "en" });
-    const { t } = createTranslator(config, "en");
-
-    expect(t("itemCount", { count: 0 })).toBe("No items");
-    expect(t("itemCount", { count: 1 })).toBe("1 item");
-    expect(t("itemCount", { count: 42 })).toBe("42 items");
-  });
-
-  it("should parse ICU plural with =N syntax", () => {
-    const en = {
-      itemCount: "{n, plural, =0{Empty} =1{One} other{{n} total}}",
-    };
-
-    const config = loadArbTranslations({ en }, { defaultLanguage: "en" });
-
-    // Check the parsed structure
-    const plural = config.translations.en.itemCount as {
-      zero?: string;
-      one: string;
-      other: string;
-    };
-    expect(plural.zero).toBe("Empty");
-    expect(plural.one).toBe("One");
-    expect(plural.other).toBe("{count} total");
-  });
-
-  it("should handle complex ARB file", () => {
-    const en = {
-      "@@locale": "en",
-      appTitle: "My App",
-      "@appTitle": {
-        description: "The title of the application",
-      },
-      welcomeMessage: "Welcome back, {username}!",
-      "@welcomeMessage": {
-        description: "Welcome message shown on home screen",
-        placeholders: {
-          username: {
-            type: "String",
-            example: "John",
-          },
-        },
-      },
-      notifications:
-        "{count, plural, zero{No notifications} one{1 notification} other{{count} notifications}}",
-      "@notifications": {
-        description: "Notification count",
-        placeholders: {
-          count: {
-            type: "int",
-          },
-        },
-      },
-    };
-
-    const config = loadArbTranslations({ en }, { defaultLanguage: "en" });
-    const { t } = createTranslator(config, "en");
-
-    expect(t("appTitle")).toBe("My App");
-    expect(t("welcomeMessage", { username: "Alice" })).toBe(
-      "Welcome back, Alice!"
+      { defaultLanguage: "en" },
     );
-    expect(t("notifications", { count: 0 })).toBe("No notifications");
-    expect(t("notifications", { count: 1 })).toBe("1 notification");
-    expect(t("notifications", { count: 5 })).toBe("5 notifications");
+
+    const { t } = createTranslator(config, "en");
+    expect(t("auth:login")).toBe("Log in");
+    expect(t("dashboard:title")).toBe("Dashboard");
+  });
+
+  it("should support defaultNamespace", () => {
+    const config = loadNamespacedJsonTranslations(
+      {
+        common: {
+          en: { hello: "Hello" },
+          es: { hello: "Hola" },
+        },
+      },
+      { defaultLanguage: "en", defaultNamespace: "common" },
+    );
+
+    const { t } = createTranslator(config, "en");
+    expect(t("hello")).toBe("Hello");
+  });
+
+  it("should handle nested + plural inside namespaces", () => {
+    const config = loadNamespacedJsonTranslations(
+      {
+        shop: {
+          en: {
+            cart: {
+              items: { zero: "Empty", one: "1 item", other: "{count} items" },
+            },
+          },
+          es: {
+            cart: {
+              items: {
+                zero: "Vacío",
+                one: "1 artículo",
+                other: "{count} artículos",
+              },
+            },
+          },
+        },
+      },
+      { defaultLanguage: "en" },
+    );
+
+    const { t } = createTranslator(config, "en");
+    expect(t("shop:cart.items", { count: 0 })).toBe("Empty");
+    expect(t("shop:cart.items", { count: 1 })).toBe("1 item");
+    expect(t("shop:cart.items", { count: 5 })).toBe("5 items");
   });
 
   it("should pass through loader options", () => {
-    const en = { greeting: "Hello" };
-
-    const config = loadArbTranslations(
-      { en },
+    const config = loadNamespacedJsonTranslations(
+      {
+        ns: { en: { key: "val" } },
+      },
       {
         defaultLanguage: "en",
         languages: { en: "English" },
         warnOnMissing: false,
-      }
+      },
     );
 
     expect(config.languages).toEqual({ en: "English" });
@@ -263,30 +204,5 @@ describe("Integration with createTranslator", () => {
 
     setLanguage("en");
     expect(t("hello")).toBe("Hello");
-  });
-
-  it("should work seamlessly with ARB loaded config", () => {
-    const translations = {
-      en: {
-        "@@locale": "en",
-        hello: "Hello",
-        count: "{n, plural, one{1 thing} other{{n} things}}",
-      },
-      es: {
-        "@@locale": "es",
-        hello: "Hola",
-        count: "{n, plural, one{1 cosa} other{{n} cosas}}",
-      },
-    };
-
-    const config = loadArbTranslations(translations, {
-      defaultLanguage: "es",
-    });
-
-    const { t } = createTranslator(config, "en");
-
-    expect(t("hello")).toBe("Hello");
-    expect(t("count", { count: 1 })).toBe("1 thing");
-    expect(t("count", { count: 3 })).toBe("3 things");
   });
 });
